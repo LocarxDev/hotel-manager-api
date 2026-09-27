@@ -6,9 +6,16 @@ types.setTypeParser(1082, v => v);
 types.setTypeParser(1700, v => (v === null ? null : parseFloat(v)));
 types.setTypeParser(20, v => (v === null ? null : parseInt(v, 10)));
 
-const connectionString = process.env.DATABASE_URL;
+// Aceita DATABASE_URL ou as variáveis que o Postgres do Railway expõe (PGHOST, PGUSER...)
+const env = process.env;
+let connectionString = env.DATABASE_URL || env.DATABASE_PRIVATE_URL || env.POSTGRES_URL || env.DATABASE_PUBLIC_URL;
+if (!connectionString && env.PGHOST && env.PGUSER) {
+  connectionString = `postgresql://${encodeURIComponent(env.PGUSER)}:${encodeURIComponent(env.PGPASSWORD || '')}@${env.PGHOST}:${env.PGPORT || 5432}/${env.PGDATABASE || 'railway'}`;
+}
 if (!connectionString) {
-  console.error('ERRO: variável DATABASE_URL não definida.');
+  const vistas = Object.keys(env).filter(k => /DATABASE|^PG|POSTGRES|JWT|MASTER/.test(k));
+  console.error('ERRO: banco de dados não configurado. Defina DATABASE_URL=${{Postgres.DATABASE_URL}} nas Variables DESTE serviço.');
+  console.error('Variáveis relacionadas encontradas neste serviço:', vistas.length ? vistas.join(', ') : 'nenhuma');
   process.exit(1);
 }
 
